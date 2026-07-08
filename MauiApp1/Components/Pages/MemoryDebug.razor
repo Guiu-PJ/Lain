@@ -1,0 +1,37 @@
+﻿@page "/debug/MemoryDebug"
+@inject MemoryService MemorySvc
+
+<h3>Memorias guardadas</h3>
+
+<button @onclick="Load">Refrescar</button>
+
+<table>
+    <thead>
+        <tr><th>Fecha</th><th>Contenido</th><th>Categoría</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var m in _memories)
+        {
+            <tr>
+                <td>@m.CreatedAt.ToString("dd/MM HH:mm")</td>
+                <td>@m.Content</td>
+                <td>@m.Category</td>
+                <td><button @onclick="() => Delete(m.Id)">🗑</button></td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    List<Memory> _memories = new();
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() => _memories = await MemorySvc.GetAllAsync();
+
+    async Task Delete(int id)
+    {
+        await MemorySvc.DeleteAsync(id);
+        await Load();
+    }
+}

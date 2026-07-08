@@ -1,0 +1,80 @@
+﻿@page "/chat"
+@inject OllamaService Ollama
+@inject ContextBuilder ContextBuilder
+@inject IServiceScopeFactory ScopeFactory
+
+<h3>Asistente</h3>
+
+<div class="chat-box">
+    @foreach (var msg in _messages)
+    {
+        <div class="msg @msg.Role">
+            <strong>@(msg.Role == "user" ? "Tú" : "Asistente"):</strong> @msg.Content
+        </div>
+    }
+    @if (_thinking)
+    {
+        <div class="msg assistant"><em>Escribiendo...</em></div>
+    }
+</div>
+
+<input @bind="_input" @bind:event="oninput"
+       @onkeydown="OnKeyDown" placeholder="Escribe algo..." />
+<button @onclick="Send" disabled="@_thinking">Enviar</button>
+
+@code {
+    record ChatMessage(string Role, string Content);
+
+    List<ChatMessage> _messages = new();
+    string _input = "";
+    bool _thinking = false;
+
+    async Task Send()
+    {
+        if (string.IsNullOrWhiteSpace(_input)) return;
+
+        _messages.Add(new("user", _input));
+        var userMessage = _input;
+        _input = "";
+        _thinking = true;
+
+        var systemPrompt = await ContextBuilder.BuildAsync(new ContextOptions
+            {
+                IncludeTasks = true,
+                IncludeMemory = true,
+                UserMessage = userMessage
+            });
+
+        var historial = _messages.Select(m => (m.Role, m.Content)).ToList();
+        var respuesta = await Ollama.ChatAsync(historial, systemPrompt);
+
+        _messages.Add(new("assistant", respuesta));
+        _thinking = false;
+
+        // Detección de memoria en segundo plano
+        _ = DetectarYGuardarMemoria(userMessage);
+    }
+
+    async Task DetectarYGuardarMemoria(string mensaje)
+    {
+        try
+        {
+            var memoria = await Ollama.DetectMemoryAsync(mensaje);
+            if (memoria is not null)
+            {
+                using var scope = ScopeFactory.CreateScope();
+                var memSvc = scope.ServiceProvider.GetRequiredService<MemoryService>();
+                await memSvc.SaveAsync(memoria);
+            }
+        }
+        catch
+        {
+            // silencioso, no afecta al chat principal
+        }
+    }
+
+    async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Send();
+    }
+}

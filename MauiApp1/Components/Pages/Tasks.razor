@@ -1,0 +1,61 @@
+﻿@page "/tasks"
+@using MiAplicacion.Data.Models
+@inject TaskService TaskSvc
+
+<h3>Tareas</h3>
+
+<div class="mb-3">
+    <input @bind="_newTitle" placeholder="Nueva tarea..." />
+    <input type="date" @bind="_newDate" />
+    <button @onclick="Add">Añadir</button>
+</div>
+
+@foreach (var task in _tasks)
+{
+    <div class="task-item @getTaskClass(task)">
+        <input type="checkbox" checked="@task.IsCompleted"
+        @onchange="() => Complete(task.Id)" />
+        <span class="">@task.Title</span>
+        @if (task.DueDate.HasValue)
+        {
+            <small>  @task.DueDate.Value.ToString("dd/MM/yyyy")</small>
+        }
+        <button @onclick="() => Delete(task.Id)">🗑</button>
+    </div>
+}
+
+@code {
+    List<TaskItem> _tasks = new();
+    string _newTitle = "";
+    DateTime? _newDate = null;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    async Task Load() => _tasks = await TaskSvc.GetAllAsync();
+
+    async Task Add()
+    {
+        if (string.IsNullOrWhiteSpace(_newTitle)) return;
+        await TaskSvc.AddAsync(new TaskItem { Title = _newTitle, DueDate = _newDate });
+        _newTitle = "";
+        _newDate = null;
+        await Load();
+    }
+
+    async Task Complete(int id) { await TaskSvc.CompleteAsync(id); await Load(); }
+    async Task Delete(int id) { await TaskSvc.DeleteAsync(id); await Load(); }
+
+    string getTaskClass(TaskItem task)
+    {
+        if (task.IsCompleted)
+            return "done";
+
+        return task.Priority switch
+        {
+            Priority.Low => "priority-low",
+            Priority.Normal => "priority-normal",
+            Priority.High => "priority-high",
+            _ => ""
+        };
+    }
+}
