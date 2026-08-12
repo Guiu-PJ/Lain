@@ -26,12 +26,13 @@ namespace MauiApp1
             builder.Services.AddScoped<TaskService>();
             builder.Services.AddScoped<ContextBuilder>();
             builder.Services.AddHttpClient<OllamaService>();
+            builder.Services.AddHttpClient<EmbeddingService>();
             builder.Services.AddScoped<MemoryService>();
 
             System.Diagnostics.Debug.WriteLine($"BD en: {dbPath}");
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();

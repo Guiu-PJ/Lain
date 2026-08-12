@@ -22,11 +22,13 @@
 
         if (options.IncludeMemory)
         {
-            var memories = await _memory.GetAllAsync();
+            // RAG: en vez de mandar TODAS las memorias, mandamos solo las
+            // relevantes al mensaje actual (+ las de importancia alta siempre).
+            var memories = await _memory.SearchRelevantAsync(options.UserMessage, topK: 5);
             if (memories.Any())
             {
                 var texto = string.Join("\n", memories.Select(m => $"- {m.Content}"));
-                sections.Add($"## Lo que sé del usuario\n{texto}");
+                sections.Add($"## Lo que sé del usuario (relevante a este mensaje)\n{texto}");
             }
         }
 
